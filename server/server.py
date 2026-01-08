@@ -67,7 +67,7 @@ def handle_client(client_socket, address):
             room.set_choice(client_socket, data)
             
             # Kiểm tra nếu đủ 2 người chọn
-            results = room.get_result()  # Lỗi: get_result thay vì get_results
+            results = room.get_results()
             if results:
                 # Gửi kết quả cho cả 2 players
                 for player in room.players:
