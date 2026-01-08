@@ -17,7 +17,7 @@ class Room:
         self.choices = {}
     
     def add_player(self, client):
-        if len(self.player) < 2:  # Lỗi: player thay vì players
+        if len(self.players) < 2:
             self.players.append(client)
             return True
         return False
