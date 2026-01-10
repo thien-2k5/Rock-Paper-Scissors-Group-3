@@ -22,24 +22,11 @@ def play_game(player_choice):
     return player_choice, computer_choice, result
 
 
-# ===== MAIN PROGRAM =====
-print("=== GAME BÚA - KÉO - BAO ===")
-print("Nhập lựa chọn của bạn: rock / paper / scissors")
+# ===== MAIN =====
+player_choice = input("Chọn (rock/paper/scissors): ").lower()
 
-player_choice = input("Your choice: ").lower()
-
-if player_choice not in choices:
-    print("❌ Lựa chọn không hợp lệ!")
+if player_choice in choices:
+    p, c, r = play_game(player_choice)
+    print(f"\nBạn: {p} | Máy: {c} | Kết quả: {r.upper()}")
 else:
-    player, computer, result = play_game(player_choice)
-
-    print("\n--- KẾT QUẢ ---")
-    print(f"Bạn chọn      : {player}")
-    print(f"Máy chọn      : {computer}")
-
-    if result == "win":
-        print("🎉 KẾT QUẢ: BẠN THẮNG!")
-    elif result == "lose":
-        print("😢 KẾT QUẢ: BẠN THUA!")
-    else:
-        print("🤝 KẾT QUẢ: HÒA!")
+    print("Lựa chọn không hợp lệ!")
