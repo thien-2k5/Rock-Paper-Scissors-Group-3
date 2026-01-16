@@ -3,7 +3,7 @@ import socket
 from threading import Thread
 from threading import Lock
 import pickle
-from gameLogic import Game
+from game_logic import Game
 
 """
 SERVER lưu địa chỉ IPv4 của hệ thống.
