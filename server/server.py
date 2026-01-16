@@ -1,160 +1,118 @@
-# Server Core - Rock Paper Scissors Game
-# Thành viên 1
+# -*- coding: utf-8 -*-
 import socket
-import threading
-from game_logic import get_result, format_result
+from threading import Thread
+from threading import Lock
+import pickle
+from gameLogic import Game
 
-# Cấu hình server
-HOST = '127.0.0.1'
+"""
+SERVER lưu địa chỉ IPv4 của hệ thống.
+Bạn cần cập nhật dòng này khi clone repository từ GitHub.
+"""
+SERVER = "127.0.0.1"
 PORT = 5555
 
-# Lưu danh sách client kết nối
-clients = []
-rooms = []
+# Khởi tạo socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-class Room:
-    def __init__(self):
-        self.players = []
-        self.choices = {}
-        self.player_index = {}  # Map socket -> player index (0 or 1)
-    
-    def add_player(self, client):
-        if len(self.players) < 2:
-            player_idx = len(self.players)
-            self.players.append(client)
-            self.player_index[client] = player_idx
-            return True
-        return False
-    
-    def is_full(self):
-        return len(self.players) == 2
-    
-    def set_choice(self, client, choice):
-        self.choices[client] = choice
-    
-    def get_results(self):
-        if len(self.choices) == 2:
-            # Lấy lựa chọn của 2 players
-            player1_choice = self.choices[self.players[0]]
-            player2_choice = self.choices[self.players[1]]
-            
-            # Tính kết quả
-            result = get_result(player1_choice, player2_choice)
-            result_msg = format_result(player1_choice, player2_choice, result)
-            
-            return result_msg
-        return None
+try:
+    s.bind((SERVER, PORT))
+except socket.error as e:
+    str(e)
 
+# Server lắng nghe 2 kết nối
+s.listen(2)
+print("Server đã khởi động... Đang chờ người chơi tham gia..")
 
-def handle_client(client_socket, address):
-    """Xử lý từng client"""
-    print(f"[NEW CONNECTION] {address} connected.")
-    
-    # Tìm hoặc tạo phòng cho client
-    room = None
-    for r in rooms:
-        if not r.is_full():
-            room = r
-            break
-    
-    if room is None:
-        room = Room()
-        rooms.append(room)
-    
-    # Thêm player vào phòng
-    room.add_player(client_socket)
-    player_num = room.player_index[client_socket] + 1
-    
-    # Gửi thông báo chào mừng
-    welcome_msg = f"Chào mừng! Bạn là Player {player_num}."
-    if not room.is_full():
-        welcome_msg += "\nĐang chờ người chơi khác..."
-    else:
-        welcome_msg += "\nPhòng đã đủ người! Bắt đầu chơi."
-        # Thông báo cho player còn lại
-        other_player = room.players[0] if room.players[1] == client_socket else room.players[1]
-        try:
-            other_player.send("Đối thủ đã vào phòng! Bắt đầu chơi.".encode('utf-8'))
-        except:
-            pass
-    
-    client_socket.send(welcome_msg.encode('utf-8'))
-    
-    try:
+games = {}
+idCount = 0
+# Khởi tạo Mutex Lock từ thư viện threading của Python
+lock = Lock()
+
+def handleConnection(lock, con, p, gameId):
+    # Kích hoạt Mutex lock tại đây..
+    with lock:
+        global idCount
+        con.send(str.encode(str(p)))
         while True:
-            # Nhận dữ liệu từ client
-            data = client_socket.recv(1024).decode('utf-8').strip()
-            
-            if not data or data == 'exit':
-                break
-            
-            # Kiểm tra lựa chọn hợp lệ
-            if data not in ['rock', 'paper', 'scissors']:
-                client_socket.send("Lựa chọn không hợp lệ!".encode('utf-8'))
-                continue
-            
-            print(f"[{address}] Player {player_num} chọn: {data}")
-            
-            # Lưu lựa chọn của player
-            room.set_choice(client_socket, data)
-            
-            # Thông báo đã nhận lựa chọn
-            client_socket.send(f"Đã nhận lựa chọn: {data}. Đợi đối thủ...".encode('utf-8'))
-            
-            # Kiểm tra nếu đủ 2 người chọn
-            results = room.get_results()
-            if results:
-                # Gửi kết quả cho cả 2 players
-                for player in room.players:
-                    try:
-                        player.send(results.encode('utf-8'))
-                    except:
-                        pass
+            try:
+                # Server nhận dữ liệu từ client ở mỗi giai đoạn của trò chơi bằng hàm recv() và giải mã bằng hàm decode()
+                data = con.recv(4096).decode()
                 
-                # Reset room để chơi ván mới
-                room.choices = {}
-    
-    except Exception as e:
-        print(f"[ERROR] {e}")
-    
-    finally:
-        # Đóng kết nối
+                if gameId in games:
+                    game = games[gameId]
+
+                    if not data:
+                        if lock.locked():
+                            lock.release()
+                        break
+                    else:
+                        if data == "reset":
+                            # Yêu cầu reset trò chơi về vị trí ban đầu để nhận nước đi của người chơi lại
+                            game.resetGame()
+                        elif data != "get":
+                            # Đảm bảo nước đi của mỗi người chơi được ghi nhận.
+                            # Hàm này thực hiện nước đi được gửi từ client dưới dạng "data" và cập nhật p1Gone hoặc p2Gone
+                            game.play(p, data)
+
+                        # Instance "game" đã thay đổi sau đó được gửi đến client bằng hàm sendall() và sử dụng thư viện pickle
+                        con.sendall(pickle.dumps(game))
+                        if lock.locked():
+                            lock.release()
+                else:
+                    if lock.locked():
+                        lock.release()
+                    break
+            
+            except:
+                if lock.locked():
+                    lock.release()
+                break
+
+        
+        print("Mất kết nối")
+
         try:
-            client_socket.close()
+            del games[gameId]
+            print("Đóng trò chơi", gameId)
         except:
             pass
-        
-        if client_socket in clients:
-            clients.remove(client_socket)
-        
-        # Xóa player khỏi room
-        if client_socket in room.players:
-            room.players.remove(client_socket)
-        
-        print(f"[DISCONNECTED] {address} disconnected.")
 
+        idCount -= 1
+        """
+        Có thể thấy rằng, khối lệnh:
+            if lock.locked():
+                lock.release()
 
-def start_server():
-    """Khởi động server"""
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind((HOST, PORT))
-    server.listen()
+        được sử dụng nhiều lần trong hàm này. Điều này là vì ở mỗi giai đoạn của trò chơi, 
+        luồng hiện tại phải chờ luồng tiếp theo. Vì nó chứa trò chơi của người chơi khác.
+        Vì vậy việc giải phóng Mutex Lock khi cần thiết là rất quan trọng.
+        """
+        if lock.locked():
+            lock.release()
+        # Kết nối được đóng khi trò chơi dừng
+        con.close()
+
     
-    print(f"[LISTENING] Server is listening on {HOST}:{PORT}")
-    
-    while True:
-        # Chấp nhận kết nối mới
-        client_socket, address = server.accept()
-        clients.append(client_socket)
-        
-        # Tạo thread mới cho mỗi client
-        thread = threading.Thread(target=handle_client, args=(client_socket, address))
-        thread.start()
-        
-        print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
+while True:
+    con, addr = s.accept()
+    print("Server đã kết nối đến: ", addr)
 
+    idCount += 1
+    p = 0
+    # gameId lưu id cho mỗi trò chơi. Nó là duy nhất cho mỗi cặp người chơi.
+    gameId = (idCount - 1) // 2
 
-if __name__ == "__main__":
-    print("[STARTING] Server is starting...")
-    start_server()
+    if idCount % 2 == 1:
+        # Nếu idCount là số lẻ, chỉ có 1 trong 2 người chơi đã tham gia và đang chờ đối thủ.
+        # Bước này cũng yêu cầu tạo một instance mới của Game với gameId làm tham số
+        games[gameId] = Game(gameId)
+        print("Đang tạo trò chơi mới...")
+        
+    else:
+        # Nếu idCount là số chẵn, người chơi thứ hai đã đến lobby.
+        games[gameId].ready = True
+        p = 1
+
+    # Tạo một luồng mới cho mỗi người chơi sử dụng thư viện threading.
+    Thread(target = handleConnection, args = (lock, con, p, gameId)).start()
