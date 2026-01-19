@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Kéo Búa Bao Online</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Menu Screen -->
+    <div id="menuScreen" class="screen active">
+        <div class="menu-container">
+            <div class="game-icons">🪨📄✂️</div>
+            <h1 class="title">KÉO BÚA BAO</h1>
+            <h2 class="subtitle">ONLINE</h2>
+            <button id="playBtn" class="btn-play">🎮 Nhấn để chơi!</button>
+        </div>
+    </div>
+
+    <!-- Waiting Screen -->
+    <div id="waitingScreen" class="screen">
+        <div class="waiting-container">
+            <div class="spinner"></div>
+            <h2>Đang chờ đối thủ...</h2>
+            <p id="playerId" class="player-id"></p>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="screen">
+        <!-- Header với điểm số -->
+        <div class="score-board">
+            <h1>🎮 Kéo Búa Bao Online</h1>
+            <div class="scores">
+                <div class="score-item wins">
+                    <span class="score-label">Thắng</span>
+                    <span id="wins" class="score-value">0</span>
+                </div>
+                <div class="score-item draws">
+                    <span class="score-label">Hòa</span>
+                    <span id="draws" class="score-value">0</span>
+                </div>
+                <div class="score-item losses">
+                    <span class="score-label">Thua</span>
+                    <span id="losses" class="score-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Player vs Opponent -->
+        <div class="game-area">
+            <div class="player-box">
+                <h3>🧑 Bạn chọn</h3>
+                <div id="playerMove" class="move-display">
+                    <span class="move-icon">❓</span>
+                    <p id="playerStatus">Đang chờ...</p>
+                </div>
+            </div>
+
+            <div class="vs-divider">VS</div>
+
+            <div class="player-box opponent">
+                <h3>🤖 Đối thủ</h3>
+                <div id="opponentMove" class="move-display">
+                    <span class="move-icon">❓</span>
+                    <p id="opponentStatus">Đang chờ...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Display -->
+        <div id="resultBox" class="result-box hidden">
+            <h2 id="resultText"></h2>
+            <button id="playAgainBtn" class="btn-play-again">Chơi tiếp 🎮</button>
+        </div>
+
+        <!-- Move Buttons -->
+        <div id="moveButtons" class="move-buttons">
+            <button class="move-btn rock" data-move="Rock">
+                <span class="move-emoji">🪨</span>
+                <span class="move-name">Rock</span>
+            </button>
+            <button class="move-btn paper" data-move="Paper">
+                <span class="move-emoji">📄</span>
+                <span class="move-name">Paper</span>
+            </button>
+            <button class="move-btn scissors" data-move="Scissors">
+                <span class="move-emoji">✂️</span>
+                <span class="move-name">Scissors</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="js/network.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

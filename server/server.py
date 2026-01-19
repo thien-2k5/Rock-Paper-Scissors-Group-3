@@ -1,118 +1,215 @@
-# -*- coding: utf-8 -*-
+# server/server.py
+# Socket Server với Multi-threading cho game Rock-Paper-Scissors
+
 import socket
-from threading import Thread
-from threading import Lock
-import pickle
+import threading
+import json
 from game_logic import Game
 
-"""
-SERVER lưu địa chỉ IPv4 của hệ thống.
-Bạn cần cập nhật dòng này khi clone repository từ GitHub.
-"""
-SERVER = "127.0.0.1"
-PORT = 5555
+# Cấu hình server
+HOST = '127.0.0.1'  # localhost
+PORT = 8080
 
-# Khởi tạo socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-try:
-    s.bind((SERVER, PORT))
-except socket.error as e:
-    str(e)
-
-# Server lắng nghe 2 kết nối
-s.listen(2)
-print("Server đã khởi động... Đang chờ người chơi tham gia..")
-
+# Biến toàn cục
 games = {}
-idCount = 0
-# Khởi tạo Mutex Lock từ thư viện threading của Python
-lock = Lock()
+game_id_counter = 0
+player_id_counter = 0
+lock = threading.Lock()
 
-def handleConnection(lock, con, p, gameId):
-    # Kích hoạt Mutex lock tại đây..
-    with lock:
-        global idCount
-        con.send(str.encode(str(p)))
-        while True:
-            try:
-                # Server nhận dữ liệu từ client ở mỗi giai đoạn của trò chơi bằng hàm recv() và giải mã bằng hàm decode()
-                data = con.recv(4096).decode()
-                
-                if gameId in games:
-                    game = games[gameId]
-
-                    if not data:
-                        if lock.locked():
-                            lock.release()
-                        break
-                    else:
-                        if data == "reset":
-                            # Yêu cầu reset trò chơi về vị trí ban đầu để nhận nước đi của người chơi lại
-                            game.resetGame()
-                        elif data != "get":
-                            # Đảm bảo nước đi của mỗi người chơi được ghi nhận.
-                            # Hàm này thực hiện nước đi được gửi từ client dưới dạng "data" và cập nhật p1Gone hoặc p2Gone
-                            game.play(p, data)
-
-                        # Instance "game" đã thay đổi sau đó được gửi đến client bằng hàm sendall() và sử dụng thư viện pickle
-                        con.sendall(pickle.dumps(game))
-                        if lock.locked():
-                            lock.release()
-                else:
-                    if lock.locked():
-                        lock.release()
-                    break
-            
-            except:
-                if lock.locked():
-                    lock.release()
-                break
-
+def send_message(connection, message_type, data=None):
+    """Gửi message dạng JSON tới client"""
+    try:
+        message = {'type': message_type}
+        if data:
+            message.update(data)
         
-        print("Mất kết nối")
+        json_message = json.dumps(message)
+        connection.send(json_message.encode('utf-8'))
+        print(f"📤 Gửi: {message}")
+    except Exception as e:
+        print(f"❌ Lỗi gửi message: {e}")
 
-        try:
-            del games[gameId]
-            print("Đóng trò chơi", gameId)
-        except:
-            pass
+def receive_message(connection):
+    """Nhận message từ client"""
+    try:
+        data = connection.recv(4096).decode('utf-8')
+        if data:
+            message = json.loads(data)
+            print(f"📨 Nhận: {message}")
+            return message
+        return None
+    except Exception as e:
+        print(f"❌ Lỗi nhận message: {e}")
+        return None
 
-        idCount -= 1
-        """
-        Có thể thấy rằng, khối lệnh:
-            if lock.locked():
-                lock.release()
-
-        được sử dụng nhiều lần trong hàm này. Điều này là vì ở mỗi giai đoạn của trò chơi, 
-        luồng hiện tại phải chờ luồng tiếp theo. Vì nó chứa trò chơi của người chơi khác.
-        Vì vậy việc giải phóng Mutex Lock khi cần thiết là rất quan trọng.
-        """
-        if lock.locked():
-            lock.release()
-        # Kết nối được đóng khi trò chơi dừng
-        con.close()
-
+def handle_client(connection, address, player_id):
+    """Xử lý kết nối của mỗi client trong thread riêng"""
+    global game_id_counter, games
     
-while True:
-    con, addr = s.accept()
-    print("Server đã kết nối đến: ", addr)
-
-    idCount += 1
-    p = 0
-    # gameId lưu id cho mỗi trò chơi. Nó là duy nhất cho mỗi cặp người chơi.
-    gameId = (idCount - 1) // 2
-
-    if idCount % 2 == 1:
-        # Nếu idCount là số lẻ, chỉ có 1 trong 2 người chơi đã tham gia và đang chờ đối thủ.
-        # Bước này cũng yêu cầu tạo một instance mới của Game với gameId làm tham số
-        games[gameId] = Game(gameId)
-        print("Đang tạo trò chơi mới...")
+    current_game_id = None
+    
+    print(f"✅ Player {player_id} đã kết nối từ {address}")
+    
+    try:
+        # Gửi Player ID cho client
+        send_message(connection, 'playerId', {'playerId': player_id})
         
-    else:
-        # Nếu idCount là số chẵn, người chơi thứ hai đã đến lobby.
-        games[gameId].ready = True
-        p = 1
+        while True:
+            # Nhận message từ client
+            message = receive_message(connection)
+            
+            if not message:
+                break
+            
+            msg_type = message.get('type')
+            
+            # Xử lý JOIN GAME
+            if msg_type == 'joinGame':
+                with lock:
+                    # Tìm game đang chờ người chơi
+                    available_game = None
+                    
+                    for gid, game in games.items():
+                        if not game.ready:
+                            available_game = game
+                            current_game_id = gid
+                            break
+                    
+                    # Nếu không có, tạo game mới
+                    if not available_game:
+                        current_game_id = game_id_counter
+                        game_id_counter += 1
+                        available_game = Game(current_game_id)
+                        games[current_game_id] = available_game
+                        print(f"🎮 Tạo game mới: {current_game_id}")
+                    
+                    # Thêm player vào game
+                    available_game.add_player(player_id, connection)
+                    print(f"👤 Player {player_id} join game {current_game_id}")
+                    
+                    # Nếu đủ 2 người, bắt đầu game
+                    if available_game.ready:
+                        player_ids = available_game.get_player_ids()
+                        print(f"🎮 Game {current_game_id} bắt đầu với: {player_ids}")
+                        
+                        # Gửi thông báo cho cả 2 player
+                        for pid in player_ids:
+                            player_conn = available_game.get_player_connection(pid)
+                            send_message(player_conn, 'gameStart', {
+                                'gameId': current_game_id,
+                                'playerId': pid
+                            })
+            
+            # Xử lý MAKE MOVE
+            elif msg_type == 'makeMove':
+                move = message.get('move')
+                
+                if current_game_id is not None and current_game_id in games:
+                    game = games[current_game_id]
+                    game.set_move(player_id, move)
+                    print(f"🎯 Player {player_id} chọn: {move}")
+                    
+                    # Thông báo cho đối thủ
+                    player_ids = game.get_player_ids()
+                    opponent_id = next((pid for pid in player_ids if pid != player_id), None)
+                    
+                    if opponent_id is not None:
+                        opponent_conn = game.get_player_connection(opponent_id)
+                        send_message(opponent_conn, 'opponentReady')
+                    
+                    # Nếu cả hai đã chọn, tính kết quả
+                    if game.both_players_ready():
+                        result = game.get_result()
+                        print(f"🏆 Kết quả: {result}")
+                        
+                        # Gửi kết quả cho cả 2 player
+                        for pid in player_ids:
+                            player_conn = game.get_player_connection(pid)
+                            opponent_id = next((p for p in player_ids if p != pid), None)
+                            
+                            if result['result'] == 'draw':
+                                player_result = 'draw'
+                            elif result['winner'] == pid:
+                                player_result = 'win'
+                            else:
+                                player_result = 'lose'
+                            
+                            send_message(player_conn, 'gameResult', {
+                                'result': player_result,
+                                'winner': result['winner'],
+                                'playerMove': result['moves'][pid],
+                                'opponentMove': result['moves'][opponent_id]
+                            })
+                        
+                        # Reset game
+                        game.reset()
+    
+    except Exception as e:
+        print(f"❌ Lỗi xử lý client {player_id}: {e}")
+    
+    finally:
+        # Xử lý disconnect
+        print(f"🔌 Player {player_id} ngắt kết nối")
+        
+        if current_game_id is not None and current_game_id in games:
+            game = games[current_game_id]
+            player_ids = game.get_player_ids()
+            opponent_id = next((pid for pid in player_ids if pid != player_id), None)
+            
+            # Thông báo cho đối thủ
+            if opponent_id is not None:
+                opponent_conn = game.get_player_connection(opponent_id)
+                try:
+                    send_message(opponent_conn, 'opponentDisconnect')
+                except:
+                    pass
+            
+            # Xóa game
+            with lock:
+                if current_game_id in games:
+                    del games[current_game_id]
+                    print(f"🗑️ Xóa game {current_game_id}")
+        
+        connection.close()
 
-    # Tạo một luồng mới cho mỗi người chơi sử dụng thư viện threading.
-    Thread(target = handleConnection, args = (lock, con, p, gameId)).start()
+def start_server():
+    """Khởi động server"""
+    global player_id_counter
+    
+    # Tạo socket
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    try:
+        server_socket.bind((HOST, PORT))
+        server_socket.listen(10)  # Cho phép tối đa 10 kết nối chờ
+        
+        print(f"🚀 Server đã khởi động tại {HOST}:{PORT}")
+        print(f"✅ Đang chờ kết nối từ client...\n")
+        
+        while True:
+            # Chấp nhận kết nối
+            connection, address = server_socket.accept()
+            
+            # Gán Player ID
+            player_id = player_id_counter
+            player_id_counter += 1
+            
+            # Tạo thread mới cho mỗi client
+            client_thread = threading.Thread(
+                target=handle_client,
+                args=(connection, address, player_id)
+            )
+            client_thread.daemon = True
+            client_thread.start()
+    
+    except Exception as e:
+        print(f"❌ Lỗi server: {e}")
+    finally:
+        server_socket.close()
+
+if __name__ == '__main__':
+    print("=" * 50)
+    print("🎮 ROCK-PAPER-SCISSORS SERVER")
+    print("=" * 50)
+    start_server()
