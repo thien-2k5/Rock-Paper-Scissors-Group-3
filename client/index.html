@@ -10,7 +10,11 @@
     <!-- Menu Screen -->
     <div id="menuScreen" class="screen active">
         <div class="menu-container">
-            <div class="game-icons">🪨📄✂️</div>
+            <div class="game-icons">
+                <img src="assets/images/rock.png" alt="Rock" class="menu-icon">
+                <img src="assets/images/paper.png" alt="Paper" class="menu-icon">
+                <img src="assets/images/scissors.png" alt="Scissors" class="menu-icon">
+            </div>
             <h1 class="title">KÉO BÚA BAO</h1>
             <h2 class="subtitle">ONLINE</h2>
             <button id="playBtn" class="btn-play">🎮 Nhấn để chơi!</button>
@@ -52,7 +56,7 @@
             <div class="player-box">
                 <h3>🧑 Bạn chọn</h3>
                 <div id="playerMove" class="move-display">
-                    <span class="move-icon">❓</span>
+                    <div class="move-icon">❓</div>
                     <p id="playerStatus">Đang chờ...</p>
                 </div>
             </div>
@@ -62,7 +66,7 @@
             <div class="player-box opponent">
                 <h3>🤖 Đối thủ</h3>
                 <div id="opponentMove" class="move-display">
-                    <span class="move-icon">❓</span>
+                    <div class="move-icon">❓</div>
                     <p id="opponentStatus">Đang chờ...</p>
                 </div>
             </div>
@@ -77,15 +81,15 @@
         <!-- Move Buttons -->
         <div id="moveButtons" class="move-buttons">
             <button class="move-btn rock" data-move="Rock">
-                <span class="move-emoji">🪨</span>
+                <img src="assets/images/rock.png" alt="Rock" class="btn-image">
                 <span class="move-name">Rock</span>
             </button>
             <button class="move-btn paper" data-move="Paper">
-                <span class="move-emoji">📄</span>
+                <img src="assets/images/paper.png" alt="Paper" class="btn-image">
                 <span class="move-name">Paper</span>
             </button>
             <button class="move-btn scissors" data-move="Scissors">
-                <span class="move-emoji">✂️</span>
+                <img src="assets/images/scissors.png" alt="Scissors" class="btn-image">
                 <span class="move-name">Scissors</span>
             </button>
         </div>

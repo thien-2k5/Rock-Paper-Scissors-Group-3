@@ -40,9 +40,19 @@ body {
 }
 
 .game-icons {
-    font-size: 120px;
-    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 30px;
     animation: bounce 2s infinite;
+}
+
+.menu-icon {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
 }
 
 @keyframes bounce {
@@ -209,8 +219,18 @@ body {
 
 .move-icon {
     font-size: 80px;
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     margin-bottom: 15px;
+    min-height: 100px;
+}
+
+.move-image {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
 }
 
 .move-display p {
@@ -293,10 +313,14 @@ body {
     backdrop-filter: blur(10px);
     border: none;
     border-radius: 20px;
-    padding: 30px;
+    padding: 30px 20px;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
 
 .move-btn:hover {
@@ -318,33 +342,28 @@ body {
     transform: none;
 }
 
-.move-emoji {
-    font-size: 64px;
-    display: block;
-    margin-bottom: 10px;
+.btn-image {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
 }
 
 .move-name {
     color: white;
     font-size: 18px;
     font-weight: bold;
-    display: block;
 }
 
 /* ============ Responsive ============ */
 @media (max-width: 768px) {
     .title { font-size: 48px; }
     .subtitle { font-size: 32px; }
+    .menu-icon { width: 70px; height: 70px; }
+    .game-icons { gap: 20px; }
     .game-area { flex-direction: column; }
     .vs-divider { transform: rotate(90deg); margin: 10px 0; }
     .move-buttons { flex-direction: column; }
-}
-
-/* ============ Move Images ============ */
-.move-image {
-    width: 80px;
-    height: 80px;
-    object-fit: contain;
-    display: block;
-    margin: 0 auto;
+    .btn-image { width: 60px; height: 60px; }
+    .move-image { width: 80px; height: 80px; }
 }

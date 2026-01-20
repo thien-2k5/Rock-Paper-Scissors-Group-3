@@ -1,2 +1,3 @@
 # Python dependencies
 # Không cần thư viện ngoài nếu dùng socket thuần
+websockets>=12.0
