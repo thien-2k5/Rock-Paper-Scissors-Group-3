@@ -2,9 +2,11 @@
 # Logic xử lý game Rock-Paper-Scissors
 
 class Game:
-    def __init__(self, game_id):
+    def __init__(self, game_id, room_code=None):
         self.game_id = game_id
+        self.room_code = room_code
         self.players = {}  # {player_id: connection}
+        self.player_names = {}  # {player_id: name}
         self.moves = {}    # {player_id: move}
         self.ready = False
         
@@ -21,7 +23,17 @@ class Game:
             del self.players[player_id]
         if player_id in self.moves:
             del self.moves[player_id]
+        if player_id in self.player_names:
+            del self.player_names[player_id]
         self.ready = False
+    
+    def set_player_name(self, player_id, name):
+        """Đặt tên cho người chơi"""
+        self.player_names[player_id] = name
+    
+    def get_player_name(self, player_id):
+        """Lấy tên người chơi"""
+        return self.player_names.get(player_id, f'Player {player_id}')
     
     def set_move(self, player_id, move):
         """Lưu nước đi của người chơi"""
@@ -70,3 +82,7 @@ class Game:
     def get_player_connection(self, player_id):
         """Lấy connection của player"""
         return self.players.get(player_id)
+    
+    def is_room(self):
+        """Kiểm tra có phải phòng riêng không"""
+        return self.room_code is not None

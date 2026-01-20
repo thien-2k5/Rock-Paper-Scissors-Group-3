@@ -1,17 +1,31 @@
 # server/server.py
 # WebSocket Server cho Rock-Paper-Scissors Game
-# Compatible với websockets 12.0+
+# Với Room System và Player Names
 
 import asyncio
 import websockets
 import json
+import random
+import string
 from game_logic import Game
 
 # Biến toàn cục
-games = {}
+games = {}  # Matchmaking games
+rooms = {}  # Private rooms {room_code: Game}
 game_id_counter = 0
 player_id_counter = 0
-connected_clients = {}
+connected_clients = {}  # {player_id: websocket}
+player_names = {}  # {player_id: name}
+player_rooms = {}  # {player_id: room_code}
+
+
+def generate_room_code():
+    """Tạo mã phòng 6 ký tự"""
+    while True:
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        if code not in rooms:
+            return code
+
 
 async def send_message(websocket, message_type, data=None):
     """Gửi message JSON tới client"""
@@ -25,6 +39,7 @@ async def send_message(websocket, message_type, data=None):
     except Exception as e:
         print(f"❌ Lỗi gửi message: {e}")
 
+
 async def handle_client(websocket):
     """Xử lý kết nối WebSocket của client"""
     global game_id_counter, player_id_counter
@@ -32,8 +47,10 @@ async def handle_client(websocket):
     player_id = player_id_counter
     player_id_counter += 1
     current_game_id = None
+    current_room_code = None
     
     connected_clients[player_id] = websocket
+    player_names[player_id] = f'Player {player_id}'
     
     print(f"✅ Player {player_id} đã kết nối")
     
@@ -49,8 +66,99 @@ async def handle_client(websocket):
                 
                 msg_type = data.get('type')
                 
-                # JOIN GAME
-                if msg_type == 'joinGame':
+                # SET NAME
+                if msg_type == 'setName':
+                    name = data.get('name', '').strip()
+                    if name:
+                        player_names[player_id] = name[:20]  # Giới hạn 20 ký tự
+                        print(f"👤 Player {player_id} đổi tên thành: {name}")
+                
+                # CREATE ROOM
+                elif msg_type == 'createRoom':
+                    name = data.get('playerName', '').strip()
+                    if name:
+                        player_names[player_id] = name[:20]
+                    
+                    room_code = generate_room_code()
+                    game = Game(room_code, room_code=room_code)
+                    game.add_player(player_id, websocket)
+                    game.set_player_name(player_id, player_names[player_id])
+                    
+                    rooms[room_code] = game
+                    player_rooms[player_id] = room_code
+                    current_room_code = room_code
+                    current_game_id = room_code
+                    
+                    await send_message(websocket, 'roomCreated', {
+                        'roomCode': room_code,
+                        'playerId': player_id
+                    })
+                    print(f"🏠 Phòng {room_code} đã được tạo bởi Player {player_id}")
+                
+                # JOIN ROOM
+                elif msg_type == 'joinRoom':
+                    room_code = data.get('roomCode', '').strip().upper()
+                    name = data.get('playerName', '').strip()
+                    if name:
+                        player_names[player_id] = name[:20]
+                    
+                    print(f"🚪 Player {player_id} đang cố vào phòng: '{room_code}'")
+                    print(f"📋 Các phòng hiện có: {list(rooms.keys())}")
+                    
+                    if not room_code or len(room_code) != 6:
+                        await send_message(websocket, 'roomError', {
+                            'error': f'Mã phòng không hợp lệ! Nhận được: "{room_code}"'
+                        })
+                        continue
+                    
+                    if room_code not in rooms:
+                        await send_message(websocket, 'roomError', {
+                            'error': f'Phòng "{room_code}" không tồn tại hoặc đã hết hạn!'
+                        })
+                        continue
+                    
+                    game = rooms[room_code]
+                    
+                    if game.ready:
+                        await send_message(websocket, 'roomError', {
+                            'error': 'Phòng đã đầy!'
+                        })
+                        continue
+                    
+                    # Thêm player vào phòng
+                    game.add_player(player_id, websocket)
+                    game.set_player_name(player_id, player_names[player_id])
+                    player_rooms[player_id] = room_code
+                    current_room_code = room_code
+                    current_game_id = room_code
+                    
+                    await send_message(websocket, 'roomJoined', {
+                        'roomCode': room_code,
+                        'playerId': player_id
+                    })
+                    
+                    # Bắt đầu game nếu đủ 2 người
+                    if game.ready:
+                        player_ids = game.get_player_ids()
+                        print(f"🎮 Room {room_code} bắt đầu với: {player_ids}")
+                        
+                        for pid in player_ids:
+                            player_ws = game.get_player_connection(pid)
+                            opponent_id = next((p for p in player_ids if p != pid), None)
+                            opponent_name = game.get_player_name(opponent_id) if opponent_id else 'Đối thủ'
+                            
+                            await send_message(player_ws, 'gameStart', {
+                                'gameId': room_code,
+                                'playerId': pid,
+                                'opponentName': opponent_name
+                            })
+                
+                # JOIN GAME (Matchmaking)
+                elif msg_type == 'joinGame':
+                    name = data.get('playerName', '').strip()
+                    if name:
+                        player_names[player_id] = name[:20]
+                    
                     # Tìm game đang chờ
                     available_game = None
                     
@@ -70,7 +178,8 @@ async def handle_client(websocket):
                     
                     # Thêm player
                     available_game.add_player(player_id, websocket)
-                    print(f"👤 Player {player_id} join game {current_game_id}")
+                    available_game.set_player_name(player_id, player_names[player_id])
+                    print(f"👤 Player {player_id} ({player_names[player_id]}) join game {current_game_id}")
                     
                     # Bắt đầu game nếu đủ 2 người
                     if available_game.ready:
@@ -79,17 +188,27 @@ async def handle_client(websocket):
                         
                         for pid in player_ids:
                             player_ws = available_game.get_player_connection(pid)
+                            opponent_id = next((p for p in player_ids if p != pid), None)
+                            opponent_name = available_game.get_player_name(opponent_id) if opponent_id else 'Đối thủ'
+                            
                             await send_message(player_ws, 'gameStart', {
                                 'gameId': current_game_id,
-                                'playerId': pid
+                                'playerId': pid,
+                                'opponentName': opponent_name
                             })
                 
                 # MAKE MOVE
                 elif msg_type == 'makeMove':
                     move = data.get('move')
                     
-                    if current_game_id is not None and current_game_id in games:
+                    # Tìm game hiện tại (có thể là room hoặc matchmaking game)
+                    game = None
+                    if current_room_code and current_room_code in rooms:
+                        game = rooms[current_room_code]
+                    elif current_game_id is not None and current_game_id in games:
                         game = games[current_game_id]
+                    
+                    if game:
                         game.set_move(player_id, move)
                         print(f"🎯 Player {player_id} chọn: {move}")
                         
@@ -145,6 +264,34 @@ async def handle_client(websocket):
         if player_id in connected_clients:
             del connected_clients[player_id]
         
+        if player_id in player_names:
+            del player_names[player_id]
+        
+        # Cleanup room - GIỮ PHÒNG NẾU CÒN NGƯỜI Ở LẠI
+        if current_room_code and current_room_code in rooms:
+            game = rooms[current_room_code]
+            player_ids = game.get_player_ids()
+            opponent_id = next((pid for pid in player_ids if pid != player_id), None)
+            
+            # Xóa player khỏi game
+            game.remove_player(player_id)
+            
+            if opponent_id is not None and opponent_id in connected_clients:
+                opponent_ws = connected_clients[opponent_id]
+                try:
+                    await send_message(opponent_ws, 'opponentDisconnect')
+                    print(f"📢 Thông báo cho Player {opponent_id} về việc đối thủ rời phòng")
+                except:
+                    pass
+                
+                # KHÔNG XÓA PHÒNG - giữ lại để người còn lại chờ
+                print(f"🏠 Phòng {current_room_code} vẫn hoạt động, chờ người mới...")
+            else:
+                # Không còn ai trong phòng -> xóa phòng
+                del rooms[current_room_code]
+                print(f"🗑️ Xóa phòng {current_room_code} (không còn ai)")
+        
+        # Cleanup matchmaking game
         if current_game_id is not None and current_game_id in games:
             game = games[current_game_id]
             player_ids = game.get_player_ids()
@@ -160,6 +307,10 @@ async def handle_client(websocket):
             if current_game_id in games:
                 del games[current_game_id]
                 print(f"🗑️ Xóa game {current_game_id}")
+        
+        if player_id in player_rooms:
+            del player_rooms[player_id]
+
 
 async def main():
     """Khởi động WebSocket server"""
@@ -167,12 +318,18 @@ async def main():
     print("🎮 ROCK-PAPER-SCISSORS WEBSOCKET SERVER")
     print("=" * 50)
     print("🚀 Server đang khởi động...")
+    print("📋 Tính năng:")
+    print("   ✅ Matchmaking (tự động ghép cặp)")
+    print("   ✅ Private Rooms (phòng riêng)")
+    print("   ✅ Player Names (tên người chơi)")
+    print("=" * 50)
     
     # Sử dụng cách mới cho websockets 12.0+
     async with websockets.serve(handle_client, "127.0.0.1", 8080):
         print("✅ Server đã khởi động tại ws://127.0.0.1:8080")
         print("✅ Đang chờ kết nối từ client...\n")
         await asyncio.Future()  # Chạy mãi mãi
+
 
 if __name__ == '__main__':
     try:

@@ -7,6 +7,18 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <!-- Sound Toggle Button -->
+    <button id="soundToggle" class="sound-toggle" title="Bật/Tắt âm thanh">🔊</button>
+
+    <!-- Reconnect Overlay -->
+    <div id="reconnectOverlay" class="reconnect-overlay hidden">
+        <div class="reconnect-content">
+            <div class="reconnect-spinner"></div>
+            <p id="reconnectText">Đang kết nối lại...</p>
+            <button id="reconnectCancel" class="btn-cancel">Hủy</button>
+        </div>
+    </div>
+
     <!-- Menu Screen -->
     <div id="menuScreen" class="screen active">
         <div class="menu-container">
@@ -17,7 +29,52 @@
             </div>
             <h1 class="title">KÉO BÚA BAO</h1>
             <h2 class="subtitle">ONLINE</h2>
-            <button id="playBtn" class="btn-play">🎮 Nhấn để chơi!</button>
+            
+            <!-- Player Name Input -->
+            <div class="name-input-container">
+                <input type="text" id="playerNameInput" class="name-input" placeholder="👤 Nhập tên của bạn..." maxlength="20">
+            </div>
+            
+            <!-- Game Mode Buttons -->
+            <div class="menu-buttons">
+                <button id="playOnlineBtn" class="btn-menu btn-online">
+                    🌐 Chơi Online
+                </button>
+                <button id="playBotBtn" class="btn-menu btn-bot">
+                    🤖 Chơi với Bot
+                </button>
+            </div>
+            
+            <!-- Bot Difficulty -->
+            <div class="bot-options">
+                <label for="botDifficulty">Độ khó Bot:</label>
+                <select id="botDifficulty" class="difficulty-select">
+                    <option value="easy">😊 Dễ</option>
+                    <option value="medium" selected>🤔 Trung bình</option>
+                    <option value="hard">😈 Khó</option>
+                </select>
+            </div>
+            
+            <!-- Room System -->
+            <div class="room-section">
+                <h3 class="section-title">🏠 Phòng riêng</h3>
+                <div class="room-buttons">
+                    <button id="createRoomBtn" class="btn-room btn-create">
+                        ➕ Tạo phòng
+                    </button>
+                    <div class="room-join">
+                        <input type="text" id="roomCodeInput" class="room-input" placeholder="Mã phòng" maxlength="6">
+                        <button id="joinRoomBtn" class="btn-room btn-join">
+                            🚪 Vào
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- History Button -->
+            <button id="historyBtn" class="btn-history">
+                📜 Lịch sử trận đấu
+            </button>
         </div>
     </div>
 
@@ -25,8 +82,20 @@
     <div id="waitingScreen" class="screen">
         <div class="waiting-container">
             <div class="spinner"></div>
-            <h2>Đang chờ đối thủ...</h2>
+            <h2 id="waitingText">Đang chờ đối thủ...</h2>
             <p id="playerId" class="player-id"></p>
+            
+            <!-- Room Code Display -->
+            <div class="room-code-container hidden">
+                <p>Mã phòng của bạn:</p>
+                <div class="room-code-display">
+                    <span id="roomCodeDisplay" class="room-code">------</span>
+                    <button id="copyRoomCodeBtn" class="btn-copy" title="Copy mã">📋</button>
+                </div>
+                <p class="room-hint">Chia sẻ mã này cho bạn bè!</p>
+            </div>
+            
+            <button id="cancelWaitBtn" class="btn-cancel-wait">❌ Hủy</button>
         </div>
     </div>
 
@@ -34,7 +103,10 @@
     <div id="gameScreen" class="screen">
         <!-- Header với điểm số -->
         <div class="score-board">
-            <h1>🎮 Kéo Búa Bao Online</h1>
+            <div class="game-header">
+                <h1>🎮 Kéo Búa Bao Online</h1>
+                <span id="gameModeIndicator" class="mode-indicator">🌐 Online</span>
+            </div>
             <div class="scores">
                 <div class="score-item wins">
                     <span class="score-label">Thắng</span>
@@ -54,7 +126,7 @@
         <!-- Player vs Opponent -->
         <div class="game-area">
             <div class="player-box">
-                <h3>🧑 Bạn chọn</h3>
+                <h3>🧑 <span id="playerNameDisplay">Bạn</span></h3>
                 <div id="playerMove" class="move-display">
                     <div class="move-icon">❓</div>
                     <p id="playerStatus">Đang chờ...</p>
@@ -64,7 +136,7 @@
             <div class="vs-divider">VS</div>
 
             <div class="player-box opponent">
-                <h3>🤖 Đối thủ</h3>
+                <h3>🤖 <span id="opponentNameDisplay">Đối thủ</span></h3>
                 <div id="opponentMove" class="move-display">
                     <div class="move-icon">❓</div>
                     <p id="opponentStatus">Đang chờ...</p>
@@ -75,7 +147,10 @@
         <!-- Result Display -->
         <div id="resultBox" class="result-box hidden">
             <h2 id="resultText"></h2>
-            <button id="playAgainBtn" class="btn-play-again">Chơi tiếp 🎮</button>
+            <div class="result-buttons">
+                <button id="playAgainBtn" class="btn-play-again">Chơi tiếp 🎮</button>
+                <button id="backToMenuBtn" class="btn-back-menu">🏠 Menu</button>
+            </div>
         </div>
 
         <!-- Move Buttons -->
@@ -95,6 +170,30 @@
         </div>
     </div>
 
+    <!-- History Screen -->
+    <div id="historyScreen" class="screen">
+        <div class="history-container">
+            <div class="history-header">
+                <h1>📜 Lịch sử trận đấu</h1>
+                <button id="closeHistoryBtn" class="btn-close">✕</button>
+            </div>
+            
+            <div id="historyStats" class="history-stats">
+                <!-- Stats sẽ được render bởi JS -->
+            </div>
+            
+            <div id="historyList" class="history-list">
+                <!-- List sẽ được render bởi JS -->
+            </div>
+            
+            <button id="clearHistoryBtn" class="btn-clear-history">🗑️ Xóa lịch sử</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/sounds.js"></script>
+    <script src="js/history.js"></script>
+    <script src="js/bot.js"></script>
     <script src="js/network.js"></script>
     <script src="js/game.js"></script>
 </body>
