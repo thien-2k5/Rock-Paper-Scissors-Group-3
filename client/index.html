@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎮 Kéo Búa Bao Online</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
     <!-- Sound Toggle Button -->
     <button id="soundToggle" class="sound-toggle" title="Bật/Tắt âm thanh">🔊</button>
@@ -29,12 +31,13 @@
             </div>
             <h1 class="title">KÉO BÚA BAO</h1>
             <h2 class="subtitle">ONLINE</h2>
-            
+
             <!-- Player Name Input -->
             <div class="name-input-container">
-                <input type="text" id="playerNameInput" class="name-input" placeholder="👤 Nhập tên của bạn..." maxlength="20">
+                <input type="text" id="playerNameInput" class="name-input" placeholder="👤 Nhập tên của bạn..."
+                    maxlength="20">
             </div>
-            
+
             <!-- Game Mode Buttons -->
             <div class="menu-buttons">
                 <button id="playOnlineBtn" class="btn-menu btn-online">
@@ -44,7 +47,7 @@
                     🤖 Chơi với Bot
                 </button>
             </div>
-            
+
             <!-- Bot Difficulty -->
             <div class="bot-options">
                 <label for="botDifficulty">Độ khó Bot:</label>
@@ -54,7 +57,7 @@
                     <option value="hard">😈 Khó</option>
                 </select>
             </div>
-            
+
             <!-- Room System -->
             <div class="room-section">
                 <h3 class="section-title">🏠 Phòng riêng</h3>
@@ -70,7 +73,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- History Button -->
             <button id="historyBtn" class="btn-history">
                 📜 Lịch sử trận đấu
@@ -84,7 +87,7 @@
             <div class="spinner"></div>
             <h2 id="waitingText">Đang chờ đối thủ...</h2>
             <p id="playerId" class="player-id"></p>
-            
+
             <!-- Room Code Display -->
             <div class="room-code-container hidden">
                 <p>Mã phòng của bạn:</p>
@@ -94,7 +97,7 @@
                 </div>
                 <p class="room-hint">Chia sẻ mã này cho bạn bè!</p>
             </div>
-            
+
             <button id="cancelWaitBtn" class="btn-cancel-wait">❌ Hủy</button>
         </div>
     </div>
@@ -168,6 +171,9 @@
                 <span class="move-name">Scissors</span>
             </button>
         </div>
+
+        <!-- Leave Room Button -->
+        <button id="leaveRoomBtn" class="btn-leave-room">🚪 Rời phòng</button>
     </div>
 
     <!-- History Screen -->
@@ -177,15 +183,15 @@
                 <h1>📜 Lịch sử trận đấu</h1>
                 <button id="closeHistoryBtn" class="btn-close">✕</button>
             </div>
-            
+
             <div id="historyStats" class="history-stats">
                 <!-- Stats sẽ được render bởi JS -->
             </div>
-            
+
             <div id="historyList" class="history-list">
                 <!-- List sẽ được render bởi JS -->
             </div>
-            
+
             <button id="clearHistoryBtn" class="btn-clear-history">🗑️ Xóa lịch sử</button>
         </div>
     </div>
@@ -197,4 +203,5 @@
     <script src="js/network.js"></script>
     <script src="js/game.js"></script>
 </body>
+
 </html>

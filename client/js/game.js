@@ -88,7 +88,8 @@ class GameManager {
             historyList: document.getElementById('historyList'),
             historyStats: document.getElementById('historyStats'),
             clearHistoryBtn: document.getElementById('clearHistoryBtn'),
-            closeHistoryBtn: document.getElementById('closeHistoryBtn')
+            closeHistoryBtn: document.getElementById('closeHistoryBtn'),
+            leaveRoomBtn: document.getElementById('leaveRoomBtn')
         };
     }
 
@@ -107,6 +108,16 @@ class GameManager {
             this.elements.playOnlineBtn.addEventListener('click', () => {
                 window.soundManager?.playClick();
                 this.startOnlineGame();
+            });
+        }
+
+        // Leave Room Button
+        if (this.elements.leaveRoomBtn) {
+            this.elements.leaveRoomBtn.addEventListener('click', () => {
+                window.soundManager?.playClick();
+                if (confirm('Bạn có chắc muốn rời phòng không?')) {
+                    this.leaveRoom();
+                }
             });
         }
 
@@ -399,6 +410,15 @@ class GameManager {
         } catch (error) {
             console.error('❌ Không thể kết nối server:', error);
             alert('Không thể kết nối tới server!');
+        }
+    }
+
+    // Rời phòng
+    leaveRoom() {
+        if (this.gameMode === 'room' || this.gameMode === 'online') {
+            this.network.disconnect();
+            this.resetGame();
+            this.showScreen('menu');
         }
     }
 
