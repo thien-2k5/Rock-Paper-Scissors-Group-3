@@ -30,10 +30,10 @@ python server/server.py
 cd client
 python -m http.server 8000
 ```
+Sau đó truy cập: `http://localhost:8000`
+
 **Cách 3: Dùng Live Server (Khuyến nghị)**
 - Trong file index.html click chuột phải vào vùng bất kì chọn Open With Live Server
-
-Sau đó truy cập: `http://localhost:8000`
 
 ### 4. Chơi game
 
