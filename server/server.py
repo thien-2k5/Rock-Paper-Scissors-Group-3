@@ -17,6 +17,7 @@ player_id_counter = 0
 connected_clients = {}  # {player_id: websocket}
 player_names = {}  # {player_id: name}
 player_rooms = {}  # {player_id: room_code}
+player_games = {}  # {player_id: game_id} - Track game của mỗi player
 
 
 def generate_room_code():
@@ -79,6 +80,27 @@ async def handle_client(websocket):
                     if name:
                         player_names[player_id] = name[:20]
                     
+                    # Cleanup room/game cũ nếu player đang ở trong room/game khác
+                    if player_id in player_rooms:
+                        old_room_code = player_rooms[player_id]
+                        if old_room_code in rooms:
+                            old_room = rooms[old_room_code]
+                            old_room.remove_player(player_id)
+                            if len(old_room.get_player_ids()) == 0:
+                                del rooms[old_room_code]
+                                print(f"🗑️ Xóa room cũ: {old_room_code}")
+                        del player_rooms[player_id]
+                    
+                    if player_id in player_games:
+                        old_game_id = player_games[player_id]
+                        if old_game_id in games:
+                            old_game = games[old_game_id]
+                            old_game.remove_player(player_id)
+                            if len(old_game.get_player_ids()) == 0:
+                                del games[old_game_id]
+                                print(f"🗑️ Xóa game cũ: {old_game_id}")
+                        del player_games[player_id]
+                    
                     room_code = generate_room_code()
                     game = Game(room_code, room_code=room_code)
                     game.add_player(player_id, websocket)
@@ -125,6 +147,27 @@ async def handle_client(websocket):
                         })
                         continue
                     
+                    # Cleanup room/game cũ trước khi vào room mới
+                    if player_id in player_rooms:
+                        old_room_code = player_rooms[player_id]
+                        if old_room_code in rooms and old_room_code != room_code:
+                            old_room = rooms[old_room_code]
+                            old_room.remove_player(player_id)
+                            if len(old_room.get_player_ids()) == 0:
+                                del rooms[old_room_code]
+                                print(f"🗑️ Xóa room cũ: {old_room_code}")
+                        del player_rooms[player_id]
+                    
+                    if player_id in player_games:
+                        old_game_id = player_games[player_id]
+                        if old_game_id in games:
+                            old_game = games[old_game_id]
+                            old_game.remove_player(player_id)
+                            if len(old_game.get_player_ids()) == 0:
+                                del games[old_game_id]
+                                print(f"🗑️ Xóa game cũ: {old_game_id}")
+                        del player_games[player_id]
+                    
                     # Thêm player vào phòng
                     game.add_player(player_id, websocket)
                     game.set_player_name(player_id, player_names[player_id])
@@ -159,11 +202,24 @@ async def handle_client(websocket):
                     if name:
                         player_names[player_id] = name[:20]
                     
-                    # Tìm game đang chờ
+                    # Cleanup game cũ nếu player đã ở trong game
+                    if player_id in player_games:
+                        old_game_id = player_games[player_id]
+                        if old_game_id in games:
+                            old_game = games[old_game_id]
+                            old_game.remove_player(player_id)
+                            # Xóa game nếu rỗng
+                            if len(old_game.get_player_ids()) == 0:
+                                del games[old_game_id]
+                                print(f"🗑️ Xóa game cũ: {old_game_id}")
+                        del player_games[player_id]
+                    
+                    # Tìm game đang chờ (không phải game rỗng)
                     available_game = None
                     
-                    for gid, game in games.items():
-                        if not game.ready:
+                    for gid, game in list(games.items()):
+                        # Kiểm tra game có player và chưa đủ 2 người
+                        if not game.ready and len(game.get_player_ids()) == 1:
                             available_game = game
                             current_game_id = gid
                             break
@@ -179,6 +235,7 @@ async def handle_client(websocket):
                     # Thêm player
                     available_game.add_player(player_id, websocket)
                     available_game.set_player_name(player_id, player_names[player_id])
+                    player_games[player_id] = current_game_id
                     print(f"👤 Player {player_id} ({player_names[player_id]}) join game {current_game_id}")
                     
                     # Bắt đầu game nếu đủ 2 người
@@ -297,6 +354,9 @@ async def handle_client(websocket):
             player_ids = game.get_player_ids()
             opponent_id = next((pid for pid in player_ids if pid != player_id), None)
             
+            # Xóa player khỏi game
+            game.remove_player(player_id)
+            
             if opponent_id is not None and opponent_id in connected_clients:
                 opponent_ws = connected_clients[opponent_id]
                 try:
@@ -304,12 +364,16 @@ async def handle_client(websocket):
                 except:
                     pass
             
-            if current_game_id in games:
+            # Xóa game nếu không còn ai
+            if len(game.get_player_ids()) == 0 and current_game_id in games:
                 del games[current_game_id]
                 print(f"🗑️ Xóa game {current_game_id}")
         
         if player_id in player_rooms:
             del player_rooms[player_id]
+        
+        if player_id in player_games:
+            del player_games[player_id]
 
 
 async def main():

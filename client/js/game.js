@@ -513,7 +513,7 @@ class GameManager {
                 this.elements.resultText.textContent = '🤝 HÒA! 🤝';
             }
 
-            // Trong room mode hoặc online: tự động chơi tiếp sau 2 giây
+            // Trong room mode hoặc online: tự động chơi tiếp sau 5 giây
             if (this.gameMode === 'room' || this.gameMode === 'online') {
                 // Ẩn nút "Chơi tiếp", chỉ hiện nút "Rời phòng/Menu"
                 if (this.elements.playAgainBtn) {
@@ -521,7 +521,7 @@ class GameManager {
                 }
 
                 // Hiện countdown
-                let countdown = 2;
+                let countdown = 5;
                 const countdownInterval = setInterval(() => {
                     if (countdown > 0) {
                         this.elements.resultText.textContent += `\n⏱️ Ván mới trong ${countdown}s...`;
